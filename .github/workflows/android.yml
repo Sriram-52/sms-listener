@@ -6,7 +6,7 @@ on:
       base_number:
         description: 'Base build number'
         required: false
-        default: -4
+        default: -5
         type: number
 
 jobs:
