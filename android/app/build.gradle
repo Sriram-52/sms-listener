@@ -1,6 +1,27 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+apply plugin: "com.google.gms.google-services"
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+if (System.getenv()["CI"] && !keystorePropertiesFile.exists()) {
+    throw new FileNotFoundException("key.properties not found!")
+}
+
+def buildKeyProperties = new Properties()
+def buildKeyPropertiesFile = rootProject.file('build-key.properties')
+if (buildKeyPropertiesFile.exists()) {
+    buildKeyProperties.load(new FileInputStream(buildKeyPropertiesFile))
+}
+
+if (System.getenv()["CI"] && !buildKeyPropertiesFile.exists()) {
+    throw new FileNotFoundException("build-key.properties not found!")
+}
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -82,8 +103,8 @@ android {
         applicationId "com.example.smslistener"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode buildKeyProperties['versionCode'].toInteger()
+        versionName buildKeyProperties['versionName']
     }
     signingConfigs {
         debug {
@@ -92,15 +113,19 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
@@ -110,6 +135,8 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
+    implementation("com.google.firebase:firebase-firestore")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
