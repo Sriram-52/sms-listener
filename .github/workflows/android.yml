@@ -12,6 +12,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      build-number: ${{ steps.get-build.outputs.build-number }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,7 +51,7 @@ jobs:
           echo "${{ secrets.KEYSTORE_PROPERTIES }}" | base64 --decode > android/keystore.properties
           echo storeFile=/tmp/keystore.jks >> android/keystore.properties
           echo "versionCode=${{ steps.get-build.outputs.build-number }}" >> android/build-key.properties
-          echo "versionName=${{ secrets.BUILD_NAME }}" >> android/build-key.properties
+          echo "versionName=${{ vars.BUILD_NAME }}" >> android/build-key.properties
 
       - name: Create Google Services file
         run: |
@@ -65,3 +67,38 @@ jobs:
         with:
           name: android
           path: android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Set outputs
+        id: set-outputs
+        run: echo "build-number=${{ steps.get-build.outputs.build-number }}" >> $GITHUB_OUTPUT
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get release name
+        id: get-release
+        run: echo "RELEASE=v${{ vars.BUILD_NAME }}(${{ needs.build.outputs.build-number }})" >> $GITHUB_OUTPUT
+
+      - name: Conventional Changelog Action
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@v5
+        with:
+          skip-version-file: 'true'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        id: create_release
+        # if there is no tag, don't create a release
+        if: ${{ steps.changelog.outputs.tag != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          target_commitish: ${{ github.sha }}
+          tag_name: '${{ steps.changelog.outputs.tag }}'
+          name: 'release/${{ steps.get-release.outputs.RELEASE }}'
+          body: ${{ steps.changelog.outputs.clean_changelog }}
