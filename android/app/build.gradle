@@ -4,13 +4,13 @@ apply plugin: "com.facebook.react"
 apply plugin: "com.google.gms.google-services"
 
 def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file('key.properties')
+def keystorePropertiesFile = rootProject.file('keystore.properties')
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
 if (System.getenv()["CI"] && !keystorePropertiesFile.exists()) {
-    throw new FileNotFoundException("key.properties not found!")
+    throw new FileNotFoundException("keystore.properties not found!")
 }
 
 def buildKeyProperties = new Properties()
